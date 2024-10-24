@@ -41,39 +41,51 @@ function AddNewInterview() {
 
         const InputPrompt = "Job Position: " + jobPosition + ", Job Description: " + jobDesc + ", Years of Experience: " + jobExperience + ", Depends on this information please give me " + process.env.NEXT_PUBLIC_INTERVIEW_QUESTION_COUNT + " interview question with Answered in Json Format, Give Question and Answered as field in JSON";
 
-        const result = await chatSession.sendMessage(InputPrompt);
+        try {
+            const result = await chatSession.sendMessage(InputPrompt);
 
-        const MockJsonResp = (result.response.text()).replace('```json', '').replace('```', '');
+            const MockJsonResp = (result.response.text()).replace('```json', '').replace('```', '');
 
-        console.log(JSON.parse(MockJsonResp));
+            try {
+                console.log(JSON.parse(MockJsonResp));
 
-        setJsonResponse(MockJsonResp);
-
-        if (MockJsonResp) {
-            const resp = await db.insert(MockInterview).values({
-                mockId: uuidv4(),
-                jsonMockResp: MockJsonResp,
-                jobPosition: jobPosition,
-                jobDesc: jobDesc,
-                jobExperience: jobExperience,
-                createdBy: user?.primaryEmailAddress?.emailAddress,
-                createdAt: moment().format('DD-MM-yyyy')
-            }).returning({ mockID: MockInterview.mockId });
-
-
-            console.log("Inserted ID: ", resp);
-
-            if (resp) {
-                setOpenDialog(false);
-                router.push('/dashboard/interview/' + resp[0]?.mockID);
+                setJsonResponse(MockJsonResp);
+            } catch (jsonError) {
+                console.error("Error parsing JSON:", jsonError);
+                alert("There was an issue parsing the AI response. Please try again.");
+                setLoading(false);
+                return;
             }
-        }
 
-        else {
-            console.log("Something went wrong");
-        }
+            if (MockJsonResp) {
+                const resp = await db.insert(MockInterview).values({
+                    mockId: uuidv4(),
+                    jsonMockResp: MockJsonResp,
+                    jobPosition: jobPosition,
+                    jobDesc: jobDesc,
+                    jobExperience: jobExperience,
+                    createdBy: user?.primaryEmailAddress?.emailAddress,
+                    createdAt: moment().format('DD-MM-yyyy')
+                }).returning({ mockID: MockInterview.mockId });
 
-        setLoading(false)
+
+                console.log("Inserted ID: ", resp);
+
+                if (resp) {
+                    setOpenDialog(false);
+                    router.push('/dashboard/interview/' + resp[0]?.mockID);
+                }
+            }
+
+            else {
+                console.log("Something went wrong");
+            }
+        } catch (error) {
+            console.error("An error occurred during the process:", error);
+            alert("There was an issue with the AI service. Please try again.");
+        } finally {
+            setLoading(false);
+        }
     }
     return (
         <div>
